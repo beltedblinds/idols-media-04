@@ -1,0 +1,26 @@
+name: Count Files in Repo
+
+on:
+  workflow_dispatch:  # lets you trigger it manually
+
+jobs:
+  count:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Count files in each folder
+        run: |
+          echo "Counting files..."
+          for dir in */ ; do
+            count=$(find "$dir" -type f | wc -l)
+            echo "$dir — $count files" >> file_counts.txt
+          done
+          cat file_counts.txt
+
+      - name: Upload result as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: file-counts
+          path: file_counts.txt
