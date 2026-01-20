@@ -1,0 +1,64 @@
+name: Copy Folder Structure from idols-media-03
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  copy_structure:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout idols-media-04 repo
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: idols-media-04
+          persist-credentials: true
+
+      - name: Checkout idols-media-03 repo
+        uses: actions/checkout@v4
+        with:
+          repository: beltedblinds/idols-media-03
+          path: idols-media-03
+
+      - name: Copy folder structure (exclude certain paths)
+        run: |
+          python <<'PYCODE'
+          import os
+          from pathlib import Path
+
+          source_root = Path("idols-media-03")
+          target_root = Path("idols-media-04")
+
+          # Paths to exclude (relative to source_root)
+          excluded_prefixes = [".github/workflows", "idol_gallery_links_03.txt"]
+
+          for root, dirs, files in os.walk(source_root):
+              rel = Path(root).relative_to(source_root)
+
+              # Skip excluded folders
+              rel_str = str(rel)
+              if any(rel_str.startswith(ex) for ex in excluded_prefixes):
+                  continue
+
+              target_dir = target_root / rel
+              os.makedirs(target_dir, exist_ok=True)
+
+              # Add .gitkeep if this dir would otherwise be empty
+              if not any(os.scandir(target_dir)):
+                  (target_dir / ".gitkeep").touch()
+
+          print("✅ Folder structure copied successfully with .gitkeep placeholders!")
+          PYCODE
+
+      - name: Commit and push changes
+        run: |
+          cd idols-media-04
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add .
+          git commit -m "Sync folder structure from idols-media-03" || echo "No changes to commit"
+          git push
