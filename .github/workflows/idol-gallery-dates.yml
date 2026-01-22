@@ -1,4 +1,4 @@
-name: Idol Gallery Dates Generator (Lock Mode)
+name: Idol Gallery Dates Generator (Fast Pass)
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout with FULL history (still required for NEW files)
+      # 1️⃣ Checkout repo with full history
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -24,88 +24,20 @@ jobs:
         with:
           python-version: '3.x'
 
-      # 3️⃣ Generate idol_gallery_dates.txt (LOCK MODE)
-      - name: Generate commit dates (locked)
+      # 3️⃣ Run the Python script
+      - name: Generate commit dates
         run: |
-          python <<'PYCODE'
-          import os
-          import subprocess
-          from urllib.parse import urlparse, unquote
+          python scripts/generate_idol_dates.py
 
-          LINKS_FILE = "idol_gallery_links_04.txt"
-          DATES_FILE = "idol_gallery_dates_04.txt"
-
-          # -----------------------------
-          # Helpers
-          # -----------------------------
-          def get_first_commit_date(path):
-              try:
-                  result = subprocess.check_output(
-                      ["git", "log", "--diff-filter=A", "--follow", "--format=%cI", "--", path],
-                      stderr=subprocess.DEVNULL
-                  ).decode().strip().splitlines()
-                  return result[-1] if result else ""
-              except Exception:
-                  return ""
-
-          def raw_url_to_relpath(raw_url):
-              parsed = urlparse(raw_url)
-              path = unquote(parsed.path)
-              return "/".join(path.split("/")[4:])  # strip /user/repo/branch/
-
-          # -----------------------------
-          # Load existing locked dates
-          # -----------------------------
-          locked_dates = {}
-
-          if os.path.exists(DATES_FILE):
-              with open(DATES_FILE, "r", encoding="utf-8") as f:
-                  for line in f:
-                      if "," not in line:
-                          continue
-                      filename, date = line.strip().split(",", 1)
-                      locked_dates[filename.strip()] = date.strip()
-
-          # -----------------------------
-          # Process links IN ORDER
-          # -----------------------------
-          output_lines = []
-
-          with open(LINKS_FILE, "r", encoding="utf-8") as f:
-              for line in f:
-                  parts = [p.strip() for p in line.split(",")]
-                  if len(parts) < 2:
-                      continue
-
-                  raw_url = parts[1]
-                  rel_path = raw_url_to_relpath(raw_url)
-
-                  # 🔒 LOCK MODE
-                  if rel_path in locked_dates and locked_dates[rel_path]:
-                      commit_date = locked_dates[rel_path]
-                  else:
-                      commit_date = get_first_commit_date(rel_path)
-
-                  output_lines.append(f"{rel_path}, {commit_date}")
-
-          # -----------------------------
-          # Write final locked file
-          # -----------------------------
-          with open(DATES_FILE, "w", encoding="utf-8") as f:
-              f.write("\n".join(output_lines))
-
-          print(f"📄 Generated {DATES_FILE} (lock mode)")
-          PYCODE
-
-      # 4️⃣ Commit results
+      # 4️⃣ Commit and push dates file (fixed)
       - name: Commit and push dates file
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add idol_gallery_dates.txt || true
-          if ! git diff --cached --quiet; then
-            git commit -m "Update idol gallery dates (lock mode) [auto]"
-            git push
-          else
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add idol_gallery_dates_04.txt || true
+          if git diff --cached --quiet; then
             echo "No changes to commit"
+          else
+            git commit -m "Update idol gallery dates (fast pass) [auto]"
+            git push
           fi
