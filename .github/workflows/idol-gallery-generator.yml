@@ -199,11 +199,20 @@ jobs:
           manual_root = "manual thumbnails"
           
           # Build lookup: (idol_name, file_name) -> index in output_lines
+          from urllib.parse import unquote
+          
           lookup = {}
           for idx, line in enumerate(output_lines):
-              idol_name, raw_url, thumb_url, _ = line.split(", ", 3)
-              file_name = os.path.basename(thumb_url)
+              parts = [p.strip() for p in line.split(",")]
+              if len(parts) < 3:
+                  continue
+          
+              idol_name = parts[0]
+              thumb_url = parts[-2]  # always the thumbnail field
+              file_name = os.path.basename(unquote(thumb_url))
+          
               lookup[(idol_name, file_name)] = idx
+
           
           # Iterate over manual thumbnails folder only
           for idol_folder in os.listdir(manual_root):
